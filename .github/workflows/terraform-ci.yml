@@ -26,6 +26,7 @@ jobs:
       - name: Tfsec Run Check and Generate SARIF File
         uses: aquasecurity/tfsec-sarif-action@v0.1.0
         with:
+          tfsec_args: --soft-fail --exclude-downloaded-modules
           sarif_file: tfsec.sarif
 
       - name: Upload SARIF file
