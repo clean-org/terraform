@@ -17,8 +17,18 @@ jobs:
       - name: Terraform Format
         run: terraform fmt -recursive -no-color -check -diff
 
-      - name: tfsec
+      - name: Tfsec PR Commenter
         uses: aquasecurity/tfsec-pr-commenter-action@v1.2.0
         with:
           tfsec_args: --soft-fail --exclude-downloaded-modules
           github_token: ${{ github.token }}
+
+      - name: Tfsec Run Check and Generate SARIF File
+        uses: tfsec/tfsec-sarif-action@main
+        with:
+          sarif_file: tfsec.sarif
+
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@v1
+        with:
+          sarif_file: tfsec.sarif
