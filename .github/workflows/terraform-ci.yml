@@ -24,7 +24,7 @@ jobs:
           github_token: ${{ github.token }}
 
       - name: Tfsec Run Check and Generate SARIF File
-        uses: tfsec/tfsec-sarif-action@main
+        uses: aquasecurity/tfsec-sarif-action@v0.1.0
         with:
           sarif_file: tfsec.sarif
 
