@@ -1,8 +1,6 @@
 name: 'Terraform Checks'
 
-on: [push, pull_request]
-env:
-  tf_version: '0.13.5'
+on: [pull_request]
 
 jobs:
   build:
@@ -10,23 +8,28 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Checkout the repository to the GitHub Actions runner
       - name: Checkout
         uses: actions/checkout@v3
 
-      # Install the latest version of Terraform CLI and configure the Terraform CLI configuration file with a Version
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v1.3.2
-        with:
-          terraform_version: ${{ env.tf_version }}
 
-      # Checks that all Terraform configuration files adhere to a canonical format
       - name: Terraform Format
         run: terraform fmt -recursive -no-color -check -diff
 
-      # Static analyse tool for terraform
-      - name: tfsec
+      - name: Tfsec PR Commenter
         uses: aquasecurity/tfsec-pr-commenter-action@v1.2.0
         with:
           tfsec_args: --soft-fail --exclude-downloaded-modules
           github_token: ${{ github.token }}
+
+      - name: Tfsec Run Check and Generate SARIF File
+        uses: aquasecurity/tfsec-sarif-action@v0.1.0
+        with:
+          tfsec_args: --soft-fail --exclude-downloaded-modules
+          sarif_file: tfsec.sarif
+
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@v1
+        with:
+          sarif_file: tfsec.sarif
