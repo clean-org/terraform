@@ -1,77 +1,40 @@
-module "gke" {
-  source                     = "terraform-google-modules/kubernetes-engine/google"
-  project_id                 = var.gcp_project_id
-  name                       = var.gcp_cluster_name
-  region                     = var.gcp_region
-  regional                   = false
-  zones                      = var.gke_zones
-  network                    = var.gke_network
-  subnetwork                 = var.gke_subnetwork
-  ip_range_pods              = ""
-  ip_range_services          = ""
-  http_load_balancing        = false
-  network_policy             = false
-  horizontal_pod_autoscaling = true
-  filestore_csi_driver       = false
+# GKE cluster
+resource "google_container_cluster" "primary" {
+  name     = "${var.gcp_project_name}-gke"
+  location = var.gcp_region
 
-  node_pools = [
-    {
-      name               = "default-node-pool"
-      machine_type       = "e2-medium"
-      min_count          = 1
-      max_count          = 3
-      local_ssd_count    = 0
-      disk_size_gb       = 100
-      disk_type          = "pd-standard"
-      image_type         = "COS_CONTAINERD"
-      auto_repair        = true
-      auto_upgrade       = true
-      preemptible        = false
-      initial_node_count = 1
-    },
-  ]
+  # We can't create a cluster with no node pool defined, but we want to only use
+  # separately managed node pools. So we create the smallest possible default
+  # node pool and immediately delete it.
+  remove_default_node_pool = true
+  initial_node_count       = 1
 
-  node_pools_oauth_scopes = {
-    all = []
+  network    = google_compute_network.vpc.name
+  subnetwork = google_compute_subnetwork.subnet.name
+}
 
-    default-node-pool = [
-      "https://www.googleapis.com/auth/cloud-platform",
+# Separately Managed Node Pool
+resource "google_container_node_pool" "primary_nodes" {
+  name       = "${google_container_cluster.primary.name}-node-pool"
+  location   = var.gcp_region
+  cluster    = google_container_cluster.primary.name
+  node_count = var.gke_num_nodes
+
+  node_config {
+    oauth_scopes = [
+      "https://www.googleapis.com/auth/logging.write",
+      "https://www.googleapis.com/auth/monitoring",
     ]
-  }
 
-  node_pools_labels = {
-    all = {}
-
-    default-node-pool = {
-      default-node-pool = true
+    labels = {
+      env = var.gcp_project_name
     }
-  }
 
-  node_pools_metadata = {
-    all = {}
-
-    default-node-pool = {
-      node-pool-metadata-custom-value = "my-node-pool"
+    # preemptible  = true
+    machine_type = "n1-standard-1"
+    tags         = ["gke-node", "${var.gcp_project_name}-gke"]
+    metadata = {
+      disable-legacy-endpoints = "true"
     }
-  }
-
-  node_pools_taints = {
-    all = []
-
-    default-node-pool = [
-      {
-        key    = "default-node-pool"
-        value  = true
-        effect = "PREFER_NO_SCHEDULE"
-      },
-    ]
-  }
-
-  node_pools_tags = {
-    all = []
-
-    default-node-pool = [
-      "default-node-pool",
-    ]
   }
 }
